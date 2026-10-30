@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  ApiList,
   errorMessage,
   listFrom,
   money,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/staff-api";
 
 type CartLine = { product: StaffProduct; quantity: number };
+type LookupCustomer = { id: number; name: string; phone: string; email?: string };
 type CreatedOrder = {
   id: number;
   order_number: string;
@@ -58,6 +60,7 @@ export default function POSPage() {
   const [search, setSearch] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [fulfillment, setFulfillment] = useState("PICKUP");
   const [address, setAddress] = useState("");
   const [deliveryFee, setDeliveryFee] = useState("0");
@@ -69,6 +72,64 @@ export default function POSPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lookupQuery, setLookupQuery] = useState("");
+  const [lookupResults, setLookupResults] = useState<LookupCustomer[]>([]);
+
+  useEffect(() => {
+    const q = lookupQuery.trim();
+    if (q.length < 2) {
+      setLookupResults([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const data = await staffRequest<ApiList<LookupCustomer>>(
+          `/customers/?search=${encodeURIComponent(q)}`,
+        );
+        if (!cancelled) setLookupResults(listFrom(data).slice(0, 8));
+      } catch {
+        if (!cancelled) setLookupResults([]);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [lookupQuery]);
+
+  const [phoneMatch, setPhoneMatch] = useState<LookupCustomer | null>(null);
+
+  useEffect(() => {
+    const phone = customerPhone.trim();
+    if (selectedCustomerId || phone.replace(/\D/g, "").length < 7) {
+      setPhoneMatch(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const data = await staffRequest<ApiList<LookupCustomer>>(
+          `/customers/?phone=${encodeURIComponent(phone)}`,
+        );
+        if (!cancelled) setPhoneMatch(listFrom(data)[0] ?? null);
+      } catch {
+        if (!cancelled) setPhoneMatch(null);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [customerPhone, selectedCustomerId]);
+
+  function pickCustomer(c: LookupCustomer) {
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone);
+    setSelectedCustomerId(c.id);
+    setLookupQuery("");
+    setLookupResults([]);
+  }
 
   useEffect(() => {
     staffRequest<unknown>("/products/?page_size=100")
@@ -139,6 +200,7 @@ export default function POSPage() {
         method: "POST",
         body: JSON.stringify({
           customer_name: customerName.trim(),
+          ...(selectedCustomerId ? { customer_id: selectedCustomerId } : {}),
           customer_phone: customerPhone.trim(),
           fulfillment_type: fulfillment,
           delivery_address: fulfillment === "DELIVERY" ? address.trim() : "",
@@ -245,6 +307,7 @@ export default function POSPage() {
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_email: "",
+          ...(selectedCustomerId ? { customer_id: selectedCustomerId } : {}),
           fulfillment_type: fulfillment,
           delivery_address: fulfillment === "DELIVERY" ? address : "",
           delivery_fee: fulfillment === "DELIVERY" ? deliveryFee : "0",
@@ -433,16 +496,75 @@ export default function POSPage() {
             </div>
 
             <div className="mt-4 space-y-4 border-t border-stone-200 pt-4">
+              <div className="space-y-2">
+                {selectedCustomerId ? (
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
+                    <span>Existing customer selected: <strong>{customerName}</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCustomerId(null)}
+                      className="text-xs font-medium text-emerald-800 underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-stone-500">
+                    No customer selected: a new customer record will be created for this sale.
+                  </p>
+                )}
+                <label className="block text-sm font-medium">
+                  Find existing customer
+                  <input
+                    value={lookupQuery}
+                    onChange={(e) => setLookupQuery(e.target.value)}
+                    placeholder="Search by name, phone or email"
+                    className="mt-1 w-full rounded-lg border px-3 py-2"
+                  />
+                </label>
+                {lookupResults.length > 0 && (
+                  <ul className="divide-y divide-stone-100 rounded-lg border border-stone-200 bg-white">
+                    {lookupResults.map((c) => (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          onClick={() => pickCustomer(c)}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-stone-50"
+                        >
+                          <span className="font-medium">{c.name}</span>
+                          <span className="ml-2 text-stone-500">{c.phone}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="text-sm font-medium">
                   Customer name *
-                  <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2" required />
-                </label>
+                  <input value={customerName} onChange={(e) => { setCustomerName(e.target.value); setSelectedCustomerId(null); }} className="mt-1 w-full rounded-lg border px-3 py-2" required />
+                 </label>
                 <label className="text-sm font-medium">
                   Phone *
-                  <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2" required />
+                  <input value={customerPhone} onChange={(e) => { setCustomerPhone(e.target.value); setSelectedCustomerId(null); }} className="mt-1 w-full rounded-lg border px-3 py-2" required />
                 </label>
               </div>
+
+              {phoneMatch && !selectedCustomerId && (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+                  <span>
+                    A customer with this phone already exists: <strong>{phoneMatch.name}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { pickCustomer(phoneMatch); setPhoneMatch(null); }}
+                    className="shrink-0 text-xs font-medium text-amber-900 underline"
+                  >
+                    Use this customer
+                  </button>
+                </div>
+              )}
 
               <label className="block text-sm font-medium">
                 Fulfillment

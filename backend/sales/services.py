@@ -51,6 +51,8 @@ def create_order(
     customer_notes="",
     internal_notes="",
     created_by=None,
+    customer=None,
+    auto_match_customer=True,
 ):
     """
     Create an order from product IDs and quantities.
@@ -156,10 +158,18 @@ def create_order(
         subtotal - discount_amount + delivery_fee
     ).quantize(CENT)
 
-    # Link to an existing customer by phone, or create a guest customer.
-    customer = Customer.objects.filter(
-        phone=customer_phone
-    ).order_by("id").first()
+       # Customer linking:
+    # - An explicitly selected customer (POS) is used as given.
+    # - Otherwise, match by phone only when auto_match_customer is True
+    #   (the default, which online checkout relies on).
+    # - If there is still no customer, create a new one.
+    if customer is not None and not isinstance(customer, Customer):
+        raise ValidationError("Invalid customer.")
+
+    if customer is None and auto_match_customer:
+        customer = Customer.objects.filter(
+            phone=customer_phone
+        ).order_by("id").first()
 
     if customer is None:
         customer = Customer.objects.create(
@@ -167,7 +177,6 @@ def create_order(
             phone=customer_phone,
             email=customer_email,
         )
-
     order = Order.objects.create(
         order_number=generate_order_number(),
         source=source,

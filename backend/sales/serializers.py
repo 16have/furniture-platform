@@ -1,3 +1,4 @@
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
@@ -5,6 +6,7 @@ from rest_framework import serializers
 from payments.models import Payment
 from payments.services import payment_summary
 from .models import Order, OrderItem
+from customers.models import Customer
 from .services import create_order
 from django.conf import settings
 from django.utils import timezone
@@ -94,7 +96,12 @@ class POSOrderCreateSerializer(serializers.Serializer):
     customer_name = serializers.CharField(max_length=200)
     customer_phone = serializers.CharField(max_length=30)
     customer_email = serializers.EmailField(required=False, allow_blank=True)
-
+    customer_id = serializers.PrimaryKeyRelatedField(
+        source="customer",
+        queryset=Customer.objects.all(),
+        required=False,
+        allow_null=True,
+    )
     fulfillment_type = serializers.ChoiceField(
         choices=Order.FulfillmentType.choices,
         default=Order.FulfillmentType.PICKUP,
@@ -128,7 +135,7 @@ class POSOrderCreateSerializer(serializers.Serializer):
         child=serializers.DictField(),
         allow_empty=False,
     )
-
+  
     def validate_items(self, items):
         validated = []
 
@@ -171,7 +178,7 @@ class POSOrderCreateSerializer(serializers.Serializer):
         user = request.user
 
         if (
-            attrs["discount_amount"] > 0
+            Decimal(str(attrs["discount_amount"])) > 0
             and user.role not in {"OWNER", "ADMIN"}
         ):
             raise serializers.ValidationError({
@@ -195,11 +202,12 @@ class POSOrderCreateSerializer(serializers.Serializer):
             return create_order(
                 source=Order.Source.POS,
                 created_by=request.user,
+                auto_match_customer=False,
                 **validated_data,
             )
         except DjangoValidationError as exc:
             raise serializers.ValidationError(exc.messages) from exc
-
+   
 class PublicCheckoutSerializer(serializers.Serializer):
     customer_name = serializers.CharField(max_length=200)
     customer_phone = serializers.CharField(max_length=30)

@@ -166,6 +166,13 @@ class SuspendedCart(models.Model):
         on_delete=models.CASCADE,
         related_name="suspended_carts",
     )
+    customer = models.ForeignKey(
+        "customers.Customer",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="suspended_carts",
+    )
     customer_name = models.CharField(max_length=150)
     customer_phone = models.CharField(max_length=30)
     customer_email = models.EmailField(blank=True)

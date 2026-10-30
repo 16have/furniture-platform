@@ -3,14 +3,23 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from catalog.models import Product
+from customers.models import Customer
 from .models import SuspendedCart, Order
 
 
 class SuspendedCartSerializer(serializers.ModelSerializer):
+    customer_id = serializers.PrimaryKeyRelatedField(
+        source="customer",
+        queryset=Customer.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = SuspendedCart
         fields = [
             "id",
+            "customer_id",
             "customer_name",
             "customer_phone",
             "customer_email",

@@ -406,6 +406,8 @@ class SuspendedCartViewSet(viewsets.ModelViewSet):
                 customer_notes=cart.customer_notes,
                 internal_notes=cart.internal_notes,
                 items=cart.items,
+                customer=cart.customer,
+                auto_match_customer=False,
             )
 
             order_id = order.pk

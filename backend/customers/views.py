@@ -1,5 +1,5 @@
 from django.db.models import Sum
-from rest_framework import viewsets
+from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -15,6 +15,7 @@ from .serializers import CustomerSerializer
 class CustomerViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthorizedStaff]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "phone", "email"]
     ordering_fields = ["name", "created_at", "updated_at"]
     ordering = ["name"]
