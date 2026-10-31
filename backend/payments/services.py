@@ -91,6 +91,16 @@ def create_mpesa_payment(
         raise ValidationError(
             "Payment exceeds the balance available for collection."
         )
+
+    payment = Payment.objects.create(
+        order=order,
+        method=Payment.Method.MPESA,
+        status=Payment.Status.PENDING,
+        amount=amount,
+        recorded_by=recorded_by,
+        notes=notes,
+    )
+
     log_action(
         actor=recorded_by,
         action="MPESA_PAYMENT_REQUEST_CREATED",
@@ -102,14 +112,7 @@ def create_mpesa_payment(
         },
     )
 
-    return Payment.objects.create(
-        order=order,
-        method=Payment.Method.MPESA,
-        status=Payment.Status.PENDING,
-        amount=amount,
-        recorded_by=recorded_by,
-        notes=notes,
-    )
+    return payment
 
 @transaction.atomic
 def record_cash_payment(
