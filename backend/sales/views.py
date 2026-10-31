@@ -1,5 +1,6 @@
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -389,8 +390,16 @@ class SuspendedCartViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def resume(self, request, pk=None):
+        try:
+            return self._resume(request, pk)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages) from exc
+
+    def _resume(self, request, pk):
         with transaction.atomic():
-            cart = self.get_queryset().select_for_update().get(pk=pk)
+            cart = get_object_or_404(
+                self.get_queryset().select_for_update(), pk=pk
+            )
 
             order = create_order(
                 source=Order.Source.POS,
