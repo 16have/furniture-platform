@@ -11,6 +11,14 @@ import hashlib
 
 from rest_framework.throttling import AnonRateThrottle
 
+
+class CheckoutRateThrottle(AnonRateThrottle):
+    scope = "checkout"
+
+
+class TrackingRateThrottle(AnonRateThrottle):
+    scope = "tracking"
+
 from .serializers import PublicOrderTrackingRequestSerializer
 
 from .serializers import PublicCheckoutSerializer
@@ -275,7 +283,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
 class PublicCheckoutView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle]
+    throttle_classes = [CheckoutRateThrottle]
 
     def post(self, request):
         serializer = PublicCheckoutSerializer(data=request.data)
@@ -317,7 +325,7 @@ class PublicCheckoutView(APIView):
     
 class PublicOrderTrackingView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle]
+    throttle_classes = [TrackingRateThrottle]
 
     def post(self, request):
         serializer = PublicOrderTrackingRequestSerializer(

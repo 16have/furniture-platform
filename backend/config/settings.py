@@ -151,6 +151,8 @@ REST_FRAMEWORK = {
 
     "DEFAULT_THROTTLE_RATES": {
     "anon": "30/hour",
+    "checkout": "20/hour",
+    "tracking": "60/hour",
 },
 }
 ONLINE_DELIVERY_FEE = os.getenv(
