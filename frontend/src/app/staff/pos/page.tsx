@@ -123,6 +123,15 @@ export default function POSPage() {
     };
   }, [customerPhone, selectedCustomerId]);
 
+  function resetCustomer() {
+    setCustomerName("");
+    setCustomerPhone("");
+    setSelectedCustomerId(null);
+    setLookupQuery("");
+    setLookupResults([]);
+    setPhoneMatch(null);
+  }
+
   function pickCustomer(c: LookupCustomer) {
     setCustomerName(c.name);
     setCustomerPhone(c.phone);
@@ -280,8 +289,7 @@ export default function POSPage() {
 
       setCart([]);
       setCreatedOrder(null);
-      setCustomerName("");
-      setCustomerPhone("");
+      resetCustomer();
       setAddress("");
       setNotes("");
       setDiscount("0");
@@ -325,6 +333,7 @@ export default function POSPage() {
       setCart([]);
       setCreatedOrder(null);
       setReceipt(null);
+      resetCustomer();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -630,8 +639,7 @@ export default function POSPage() {
                       const orderNumber = createdOrder.order_number;
                       setCart([]);
                       setCreatedOrder(null);
-                      setCustomerName("");
-                      setCustomerPhone("");
+                      resetCustomer();
                       setAddress("");
                       setNotes("");
                       setDiscount("0");
