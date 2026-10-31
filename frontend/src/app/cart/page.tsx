@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import {
   formatKES,
@@ -8,7 +9,19 @@ import {
 } from "@/lib/api";
 
 export default function CartPage() {
-  const { items, subtotal, hydrated, setQuantity, removeItem } = useCart();
+  const {
+    items,
+    subtotal,
+    hydrated,
+    unavailableIds,
+    refresh,
+    setQuantity,
+    removeItem,
+  } = useCart();
+
+  useEffect(() => {
+    if (hydrated) void refresh();
+  }, [hydrated, refresh]);
 
   if (!hydrated) {
     return <section className="container page-shell">Loading your bag…</section>;
@@ -47,6 +60,12 @@ export default function CartPage() {
                       <h3>{product.name}</h3>
                     </Link>
                     <p>{formatKES(product.selling_price)} each</p>
+                    {unavailableIds.includes(product.id) && (
+                      <p className="form-error">
+                        This item is no longer available. Please remove it
+                        from your bag.
+                      </p>
+                    )}
                     <div className="quantity-control">
                       <button
                         type="button"

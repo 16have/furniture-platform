@@ -6,10 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import type { Product } from "@/lib/api";
+import { apiUrl, type Product } from "@/lib/api";
 
 export type CartItem = {
   product: Product;
@@ -21,6 +22,8 @@ type CartContextValue = {
   itemCount: number;
   subtotal: number;
   hydrated: boolean;
+  unavailableIds: number[];
+  refresh: () => Promise<void>;
   addItem: (product: Product, quantity?: number) => void;
   setQuantity: (productId: number, quantity: number) => void;
   removeItem: (productId: number) => void;
@@ -30,16 +33,34 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "furniture-store-cart-v1";
 
+function isValidItem(item: unknown): item is CartItem {
+  if (typeof item !== "object" || item === null) return false;
+  const { product, quantity } = item as Partial<CartItem>;
+  return (
+    typeof product === "object" &&
+    product !== null &&
+    Number.isInteger(product.id) &&
+    product.id > 0 &&
+    typeof product.slug === "string" &&
+    Number.isFinite(Number(product.selling_price)) &&
+    Number.isInteger(quantity) &&
+    (quantity ?? 0) > 0
+  );
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [unavailableIds, setUnavailableIds] = useState<number[]>([]);
+  const itemsRef = useRef<CartItem[]>([]);
+  itemsRef.current = items;
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setItems(parsed);
+        if (Array.isArray(parsed)) setItems(parsed.filter(isValidItem));
       }
     } catch {
       localStorage.removeItem(STORAGE_KEY);
@@ -50,9 +71,61 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (hydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      } catch {
+        // Storage may be full or blocked; the cart still works in memory.
+      }
     }
   }, [items, hydrated]);
+
+  const refresh = useCallback(async () => {
+    const current = itemsRef.current;
+    if (!current.length) {
+      setUnavailableIds([]);
+      return;
+    }
+
+    type Result =
+      | { id: number; state: "ok"; product: Product }
+      | { id: number; state: "gone" }
+      | { id: number; state: "unknown" };
+
+    const results: Result[] = await Promise.all(
+      current.map(async ({ product }): Promise<Result> => {
+        try {
+          const response = await fetch(
+            apiUrl(`/products/${encodeURIComponent(product.slug)}/`),
+            { cache: "no-store" },
+          );
+          if (response.status === 404) return { id: product.id, state: "gone" };
+          if (!response.ok) return { id: product.id, state: "unknown" };
+          return {
+            id: product.id,
+            state: "ok",
+            product: (await response.json()) as Product,
+          };
+        } catch {
+          return { id: product.id, state: "unknown" };
+        }
+      }),
+    );
+
+    const fresh = new Map<number, Product>();
+    const gone: number[] = [];
+    for (const result of results) {
+      if (result.state === "ok") fresh.set(result.id, result.product);
+      if (result.state === "gone") gone.push(result.id);
+    }
+
+    setUnavailableIds(gone);
+    setItems((cart) =>
+      cart.map((item) => {
+        const updated = fresh.get(item.product.id);
+        return updated ? { ...item, product: updated } : item;
+      }),
+    );
+  }, []);
 
   const addItem = useCallback((product: Product, quantity = 1) => {
     setItems((current) => {
@@ -110,6 +183,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         0,
       ),
       hydrated,
+      unavailableIds,
+      refresh,
       addItem,
       setQuantity,
       removeItem,
@@ -118,6 +193,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [
       items,
       hydrated,
+      unavailableIds,
+      refresh,
       addItem,
       setQuantity,
       removeItem,

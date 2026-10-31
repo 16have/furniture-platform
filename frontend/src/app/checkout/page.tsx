@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useCart } from "@/context/CartContext";
 import {
   apiRequest,
@@ -30,7 +30,8 @@ type CheckoutResponse = {
 };
 
 export default function CheckoutPage() {
-  const { items, subtotal, hydrated, clearCart } = useCart();
+  const { items, subtotal, hydrated, unavailableIds, refresh, clearCart } =
+    useCart();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -42,12 +43,21 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<CheckoutResponse | null>(null);
 
+  useEffect(() => {
+    if (hydrated) void refresh();
+  }, [hydrated, refresh]);
+
   async function submitCheckout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
     if (!items.length) {
       setError("Your bag is empty.");
+      return;
+    }
+
+    if (unavailableIds.length) {
+      setError("Remove the unavailable items from your bag before ordering.");
       return;
     }
 
@@ -229,9 +239,16 @@ export default function CheckoutPage() {
               <textarea id="customer-notes" className="textarea-field" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Anything we should know about this order?" />
             </div>
 
+            {unavailableIds.length > 0 && (
+              <div className="form-error">
+                Some items in your bag are no longer available.{" "}
+                <Link href="/cart">Review your bag</Link>
+              </div>
+            )}
+
             {error && <div className="form-error">{error}</div>}
 
-            <button className="button" type="submit" disabled={submitting}>
+            <button className="button" type="submit" disabled={submitting || unavailableIds.length > 0}>
               {submitting ? "Submitting order…" : "Place order"}
             </button>
 
@@ -245,7 +262,10 @@ export default function CheckoutPage() {
             <h2>Your order</h2>
             {items.map(({ product, quantity }) => (
               <div className="summary-line" key={product.id}>
-                <span>{product.name} × {quantity}</span>
+                <span>
+                  {product.name} × {quantity}
+                  {unavailableIds.includes(product.id) ? " (no longer available)" : ""}
+                </span>
                 <span>{formatKES(Number(product.selling_price) * quantity)}</span>
               </div>
             ))}
