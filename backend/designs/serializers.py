@@ -64,4 +64,19 @@ class StaffDesignRequestSerializer(serializers.ModelSerializer):
             "created_by",
             "created_at",
             "updated_at",
+            "status",
+            "estimated_price",
+            "estimated_production_days",
+            "internal_production_cost",
+            "internal_notes",
+            "reviewed_by",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if getattr(user, "role", None) not in {"OWNER", "ADMIN"}:
+            data.pop("internal_production_cost", None)
+            data.pop("internal_notes", None)
+        return data

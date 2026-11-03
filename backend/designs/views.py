@@ -214,4 +214,8 @@ class DesignRequestViewSet(viewsets.ModelViewSet):
             },
         )
 
-        return Response(StaffDesignRequestSerializer(obj).data)
+        return Response(
+            StaffDesignRequestSerializer(
+                obj, context=self.get_serializer_context()
+            ).data
+        )
