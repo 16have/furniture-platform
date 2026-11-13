@@ -116,6 +116,7 @@ export default function StaffDashboardPage() {
           <Shortcut href="/staff/inventory" title="Inventory" description="Review stock levels, receive deliveries, record damage and audit movements." />
           <Shortcut href="/staff/suppliers" title="Suppliers" description="Maintain supplier contacts and deactivate outdated records." />
           <Shortcut href="/staff/customers" title="Customers" description="Search the customer directory, edit details and review purchase history." />
+          <Shortcut href="/staff/designs" title="Design requests" description="Review custom design requests, send quotes and move them through production." />
           <Shortcut href="/products" title="Public catalogue" description="View the products customers can browse." />
           <Shortcut href="/staff" title="Operations overview" description="Recent orders and inventory alerts." />
         </section>
