@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import RoleBadge from "@/components/RoleBadge";
+import { useMe } from "@/lib/use-me";
 import { useEffect, useState } from "react";
 import {
   errorMessage,
@@ -48,6 +49,8 @@ export default function StaffDashboardPage() {
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const me = useMe();
+  const canSeeMoney = me?.role === "OWNER" || me?.role === "ADMIN";
 
   useEffect(() => {
     let alive = true;
@@ -116,6 +119,12 @@ export default function StaffDashboardPage() {
           <Shortcut href="/staff/inventory" title="Inventory" description="Review stock levels, receive deliveries, record damage and audit movements." />
           <Shortcut href="/staff/suppliers" title="Suppliers" description="Maintain supplier contacts and deactivate outdated records." />
           <Shortcut href="/staff/customers" title="Customers" description="Search the customer directory, edit details and review purchase history." />
+          {canSeeMoney && (
+            <>
+              <Shortcut href="/staff/expenses" title="Expenses" description="Record operating expenses and review them by category and date." />
+              <Shortcut href="/staff/reports" title="Reports" description="Sales, costs and profit estimates for any period." />
+            </>
+          )}
           <Shortcut href="/staff/designs" title="Design requests" description="Review custom design requests, send quotes and move them through production." />
           <Shortcut href="/products" title="Public catalogue" description="View the products customers can browse." />
           <Shortcut href="/staff" title="Operations overview" description="Recent orders and inventory alerts." />
