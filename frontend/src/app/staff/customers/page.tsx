@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import RoleBadge from "@/components/RoleBadge";
 import { useCallback, useEffect, useState } from "react";
 import { errorMessage, listFrom, staffRequest } from "@/lib/staff-api";
 import type { ApiList } from "@/lib/staff-api";
@@ -132,7 +133,10 @@ export default function CustomersPage() {
         <Link href="/staff" className="text-sm text-stone-500 hover:text-stone-900">
           ← Staff dashboard
         </Link>
-        <h1 className="mt-3 text-3xl font-semibold">Customers</h1>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold">Customers</h1>
+          <RoleBadge />
+        </div>
         <p className="mt-1 text-sm text-stone-600">
           Search the customer directory by name, phone or email.
         </p>

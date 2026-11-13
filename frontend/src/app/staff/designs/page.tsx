@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import RoleBadge from "@/components/RoleBadge";
 import { useCallback, useEffect, useState } from "react";
 import { errorMessage, listFrom, money, staffRequest } from "@/lib/staff-api";
 import type { ApiList } from "@/lib/staff-api";
@@ -134,7 +135,10 @@ export default function DesignRequestsPage() {
         <Link href="/staff" className="text-sm text-stone-500 hover:text-stone-900">
           &larr; Staff dashboard
         </Link>
-        <h1 className="mt-3 text-3xl font-semibold">Custom design requests</h1>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-semibold">Custom design requests</h1>
+          <RoleBadge />
+        </div>
         <p className="mt-1 text-sm text-stone-600">
           Review requests submitted from the public design form.
         </p>

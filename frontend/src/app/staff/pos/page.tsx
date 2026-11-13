@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import RoleBadge from "@/components/RoleBadge";
 import { useEffect, useMemo, useState } from "react";
 import {
   ApiList,
@@ -366,7 +367,10 @@ export default function POSPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <Link href="/staff" className="text-sm text-stone-500 hover:text-stone-900">← Dashboard</Link>
-            <h1 className="mt-2 text-3xl font-semibold">Point of sale</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold">Point of sale</h1>
+              <RoleBadge />
+            </div>
             <p className="mt-1 text-sm text-stone-600">Create sales and record cash payments.</p>
           </div>
           <Link href="/staff/suspended" className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm">
