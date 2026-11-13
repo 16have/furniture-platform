@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import RoleBadge from "@/components/RoleBadge";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   errorMessage,
@@ -275,7 +276,10 @@ export default function StaffOrdersPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-800">
               Store operations
             </p>
-            <h1 className="mt-2 text-3xl font-semibold">Order management</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold">Order management</h1>
+              <RoleBadge />
+            </div>
             <p className="mt-1 text-sm text-stone-600">
               Manage fulfillment, collection and payments using the store's
               enforced order workflow.
