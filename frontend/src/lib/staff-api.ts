@@ -119,3 +119,47 @@ export function money(value: string | number | undefined | null) {
 export function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong.";
 }
+
+export async function downloadFile(path: string, fallbackName: string) {
+  const token = getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (response.status === 401) {
+    clearTokens();
+    if (typeof window !== "undefined") {
+      window.location.href = "/staff/login";
+    }
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message =
+      body && typeof body === "object"
+        ? Object.entries(body)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : String(value)}`)
+            .join(" | ")
+        : null;
+    throw new Error(message || `Download failed (${response.status})`);
+  }
+
+  // The browser only exposes Content-Disposition if the backend allows it
+  // through CORS; otherwise the fallback name is used.
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = /filename="?([^";]+)"?/i.exec(disposition);
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = match ? match[1] : fallbackName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
