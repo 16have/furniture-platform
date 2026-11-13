@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import RoleBadge from "@/components/RoleBadge";
-import { errorMessage, money, staffRequest } from "@/lib/staff-api";
+import { downloadFile, errorMessage, money, staffRequest } from "@/lib/staff-api";
 import { useMe } from "@/lib/use-me";
 
 type Summary = {
@@ -47,6 +47,8 @@ export default function ReportsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,6 +72,24 @@ export default function ReportsPage() {
   useEffect(() => {
     if (allowed) void load();
   }, [allowed, load]);
+
+  async function exportFile(kind: "sales" | "expenses", format: "csv" | "xlsx") {
+    setExporting(true);
+    setExportError("");
+    try {
+      const params = new URLSearchParams({ format });
+      if (start) params.set("start_date", start);
+      if (end) params.set("end_date", end);
+      await downloadFile(
+        `/reports/${kind}/?${params.toString()}`,
+        `${kind}_report.${format}`,
+      );
+    } catch (err) {
+      setExportError(errorMessage(err));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const inputClass = "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm";
   const periodText =
@@ -122,6 +142,28 @@ export default function ReportsPage() {
               )}
             </div>
             <p className="mt-2 text-xs text-stone-500">Showing: {periodText}</p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-stone-600">Export for this period:</span>
+              {(["sales", "expenses"] as const).map((kind) =>
+                (["csv", "xlsx"] as const).map((format) => (
+                  <button
+                    key={`${kind}-${format}`}
+                    type="button"
+                    disabled={exporting}
+                    onClick={() => void exportFile(kind, format)}
+                    className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 disabled:opacity-50"
+                  >
+                    {kind === "sales" ? "Sales" : "Expenses"} ({format === "csv" ? "CSV" : "Excel"})
+                  </button>
+                )),
+              )}
+            </div>
+            {exportError && (
+              <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {exportError}
+              </p>
+            )}
 
             {error && (
               <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
