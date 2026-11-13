@@ -148,6 +148,8 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "catalog.pagination.CatalogPagination",
     "PAGE_SIZE": 12,
+    # Exports use ?format=csv|xlsx, so DRF must not claim that parameter.
+    "URL_FORMAT_OVERRIDE": None,
 
     "DEFAULT_THROTTLE_RATES": {
     "anon": "30/hour",
