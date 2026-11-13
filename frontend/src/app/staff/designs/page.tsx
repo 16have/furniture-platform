@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { errorMessage, listFrom, money, staffRequest } from "@/lib/staff-api";
 import type { ApiList } from "@/lib/staff-api";
+import { useMe } from "@/lib/use-me";
 
 type DesignRequest = {
   id: number;
@@ -38,6 +39,15 @@ const STATUSES = [
   "CANCELLED",
 ];
 
+const NEXT: Record<string, string> = {
+  REQUESTED: "REVIEWING",
+  REVIEWING: "QUOTED",
+  QUOTED: "APPROVED",
+  APPROVED: "IN_PRODUCTION",
+  IN_PRODUCTION: "READY",
+  READY: "COMPLETED",
+};
+
 function label(value: string) {
   return value.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase());
 }
@@ -62,6 +72,11 @@ export default function DesignRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<DesignRequest | null>(null);
+  const me = useMe();
+  const [price, setPrice] = useState("");
+  const [days, setDays] = useState("");
+  const [acting, setActing] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const load = useCallback(async (statusFilter: string) => {
     setLoading(true);
@@ -82,6 +97,36 @@ export default function DesignRequestsPage() {
   useEffect(() => {
     void load(status);
   }, [status, load]);
+
+  const canAct = me?.role === "OWNER" || me?.role === "ADMIN";
+  const next = selected ? NEXT[selected.status] : undefined;
+  const cancellable =
+    !!selected && !["COMPLETED", "CANCELLED"].includes(selected.status);
+
+  async function transition(target: string) {
+    if (!selected) return;
+    setActing(true);
+    setActionError("");
+    try {
+      const body: Record<string, unknown> = { status: target };
+      if (target === "QUOTED") {
+        body.estimated_price = price;
+        body.estimated_production_days = days;
+      }
+      const updated = await staffRequest<DesignRequest>(
+        `/design-requests/${selected.id}/transition/`,
+        { method: "POST", body: JSON.stringify(body) },
+      );
+      setSelected(updated);
+      setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      setPrice("");
+      setDays("");
+    } catch (err) {
+      setActionError(errorMessage(err));
+    } finally {
+      setActing(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-stone-100 px-4 py-7 text-stone-900 sm:px-8">
@@ -122,7 +167,12 @@ export default function DesignRequestsPage() {
             {requests.map((r) => (
               <li
                 key={r.id}
-                onClick={() => setSelected(r)}
+                onClick={() => {
+                  setSelected(r);
+                  setActionError("");
+                  setPrice("");
+                  setDays("");
+                }}
                 className="cursor-pointer px-4 py-3 hover:bg-stone-50"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -209,6 +259,66 @@ export default function DesignRequestsPage() {
                   />
                   <Field name="Internal notes" value={selected.internal_notes} />
                 </dl>
+              </div>
+            )}
+
+            {canAct && (next || cancellable) && (
+              <div className="mt-4 border-t border-stone-100 pt-4">
+                {next === "QUOTED" && (
+                  <div className="mb-3 grid gap-3 sm:grid-cols-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="Quote price (KES)"
+                      className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={days}
+                      onChange={(e) => setDays(e.target.value)}
+                      placeholder="Production days"
+                      className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                )}
+
+                {actionError && (
+                  <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {actionError}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-3">
+                  {next && (
+                    <button
+                      type="button"
+                      disabled={acting || (next === "QUOTED" && (!price || !days))}
+                      onClick={() => void transition(next)}
+                      className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+                    >
+                      Move to {label(next)}
+                    </button>
+                  )}
+                  {cancellable && (
+                    <button
+                      type="button"
+                      disabled={acting}
+                      onClick={() => {
+                        if (window.confirm("Cancel this design request?")) {
+                          void transition("CANCELLED");
+                        }
+                      }}
+                      className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-700 disabled:opacity-50"
+                    >
+                      Cancel request
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </section>
